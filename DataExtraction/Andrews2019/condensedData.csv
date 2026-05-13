@@ -1,0 +1,7 @@
+year,11,,,,,,,,,,
+,,,,,,,,,,,
+,Data,,,,,,,,,,
+treatment,Count - plot,Average - Mosses,StDev - Mosses,Average - Herbs,StDev - Herbs,Average - Shrubs,StDev - Shrubs,Average - Tree,StDev - Tree,Average - SR,StDev - SR
+control,3.000,73.000,5.568,92.333,17.039,19.333,13.013,0.000,0.000,13.000,2.000
+drought,3.000,78.000,4.359,81.667,23.692,13.333,2.887,0.000,0.000,13.000,1.732
+Total Result,6.000,75.500,5.244,87.000,19.360,16.333,9.048,0.000,0.000,13.000,1.673
