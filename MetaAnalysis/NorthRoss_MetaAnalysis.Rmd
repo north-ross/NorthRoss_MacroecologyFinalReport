@@ -8,7 +8,7 @@ Clean up data
 ```{r}
 library(metafor)
 library(orchaRd)
-df <- read.csv("ExtractedData_2026-05-12.csv")
+df <- read.csv("ExtractedData_2026-05-15.csv")
 # Convert all variances to SD
 table(df$Biodiversity_Variance_unit)
 df$Control_SD = df$Control_var
@@ -35,13 +35,13 @@ table(df$Peatland_type)
 df$FG_Group <- replace(df$FG_Group, 
                       grepl(" moss", df$FG_Group),
                       "Moss")
-# Remove empty
-df <- subset(df, df$FG_Group != "")
 
 # Convert some variables to factors
 df$Peatland_type <- factor(df$Peatland_type)
 df$FG_Group <- factor(df$FG_Group)
 
+# Convert to numeric
+df$WTD_Difference <- as.numeric(df$WTD_Difference)
 ```
 
 # Func Groups as mod
@@ -49,6 +49,9 @@ df$FG_Group <- factor(df$FG_Group)
 ```{r}
 # Let's try doing all functional group data then separating them as a variable
 fg <- subset(df, df$SR_or_FG=="FG")
+
+# Remove empty
+fg <- subset(fg, df$FG_Group != "")
 
 fg$FG_Group <- factor(fg$FG_Group)
 # Get effect size
@@ -71,12 +74,35 @@ fg1 <-rma.mv(
   method="REML",
   digits=4,
   data=fgES)
+summary(fg1)
+# only significant change is in trees (shrubs are significant only at p=0.1)
+# makes sense, trees should increase strongly with WT drawdown
 
 orchard_plot(fg1,
              mod = "FG_Group",
              group = "PaperID",
              xlab = "Standardised mean difference (with heteroscedastic population variances)")
 # I think this looks pretty good?
+```
+
+```{r}
+
+# Try with WTD difference as another mod
+fg2 <-rma.mv(
+  yi=yi,
+  V=vi,
+  mods = ~ FG_Group * WTD_Difference,
+  random= ~1|PaperID/ID,
+  method="REML",
+  digits=4,
+  data=fgES)
+summary(fg2)
+
+
+fg2_plot <- orchaRd::mod_results(fg2, mod = "WTD_Difference", group = "PaperID",
+                              by = "FG_Group")
+
+orchaRd::bubble_plot(lim_bubble, group = "Article",  mod = "year", xlab = "Year", legend.pos = "top.left")
 ```
 
 # Looking at just herbs with peatland type as mod
@@ -124,4 +150,4 @@ orchard_plot(peat1,
              xlab = "Standardised mean difference (with heteroscedastic population variances)")
 ```
 
-The grand mean of the effect size was -0.2296, but only had a p-value of 0.1946, indicating that there was no significant difference between peatland types on the growth of herb plants.
+The grand mean of the effect size was -0.2296, but only had a p-value of 0.1946, indicating that there was no significant effect of WLD on herb production.
