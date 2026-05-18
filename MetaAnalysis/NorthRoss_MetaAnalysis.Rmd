@@ -51,7 +51,9 @@ df$WTD_Difference <- as.numeric(df$WTD_Difference)
 fg <- subset(df, df$SR_or_FG=="FG")
 
 # Remove empty
-fg <- subset(fg, df$FG_Group != "")
+fg <- subset(fg, fg$FG_Group != "")
+# Remove "vascular plant" (not really useful for comparison)
+fg <- subset(fg, fg$FG_Group != "Vascular plant")
 
 fg$FG_Group <- factor(fg$FG_Group)
 # Get effect size
@@ -75,15 +77,16 @@ fg1 <-rma.mv(
   digits=4,
   data=fgES)
 summary(fg1)
-# only significant change is in trees (shrubs are significant only at p=0.1)
-# makes sense, trees should increase strongly with WT drawdown
+# only significant change is in trees at p=0.01
 
 orchard_plot(fg1,
              mod = "FG_Group",
              group = "PaperID",
-             xlab = "Standardised mean difference (with heteroscedastic population variances)")
+             xlab = "Standardised mean difference (Treatment - Control) with heteroscedastic population variances")
 # I think this looks pretty good?
 ```
+
+Only one FG changed significantly
 
 ```{r}
 
@@ -99,11 +102,15 @@ fg2 <-rma.mv(
 summary(fg2)
 
 
-fg2_plot <- orchaRd::mod_results(fg2, mod = "WTD_Difference", group = "PaperID",
-                              by = "FG_Group")
 
-orchaRd::bubble_plot(lim_bubble, group = "Article",  mod = "year", xlab = "Year", legend.pos = "top.left")
+fg2_plot <- mod_results(fg2, mod = "WTD_Difference", group = "PaperID", by = "FG_Group")
+
+bubble_plot(fg2_plot, group = "PaperID",  mod = "WTD_Difference", xlab = "WTD Difference")
 ```
+
+WTD on its own has a significant negative effect on overall abundance - productivity in general (regardless of functional group) is lower under water table draw down (not what we would expect), but this is probably biased by differing methods and measurements.
+
+Where is "Herb" in the summary????
 
 # Looking at just herbs with peatland type as mod
 
