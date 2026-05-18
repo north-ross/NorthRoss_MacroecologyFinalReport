@@ -71,7 +71,7 @@ fgES <- escalc(measure = "SMDH", # I think this is best,
 fg1 <-rma.mv(
   yi=yi,
   V=vi, 
-  mods=~FG_Group, 
+  mods=~FG_Group -1, 
   random= ~1|PaperID/ID,
   method="REML",
   digits=4,
@@ -82,11 +82,10 @@ summary(fg1)
 orchard_plot(fg1,
              mod = "FG_Group",
              group = "PaperID",
-             xlab = "Standardised mean difference (Treatment - Control) with heteroscedastic population variances")
-# I think this looks pretty good?
+             xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
 ```
 
-Only one FG changed significantly
+No significant changes to
 
 ```{r}
 
@@ -94,7 +93,7 @@ Only one FG changed significantly
 fg2 <-rma.mv(
   yi=yi,
   V=vi,
-  mods = ~ FG_Group * WTD_Difference,
+  mods = ~ FG_Group * WTD_Difference -1,
   random= ~1|PaperID/ID,
   method="REML",
   digits=4,
@@ -105,12 +104,10 @@ summary(fg2)
 
 fg2_plot <- mod_results(fg2, mod = "WTD_Difference", group = "PaperID", by = "FG_Group")
 
-bubble_plot(fg2_plot, group = "PaperID",  mod = "WTD_Difference", xlab = "WTD Difference")
+bubble_plot(fg2_plot, group = "PaperID",  mod = "WTD_Difference", xlab = "WTD_Difference")
 ```
 
-WTD on its own has a significant negative effect on overall abundance - productivity in general (regardless of functional group) is lower under water table draw down (not what we would expect), but this is probably biased by differing methods and measurements.
-
-Where is "Herb" in the summary????
+Herb production was significantly affected by WTD difference at the p=0.05 level - studies with small changes in WTD resulted in decreases in herb abundance,while high WTD showed increases.
 
 # Looking at just herbs with peatland type as mod
 
@@ -158,3 +155,80 @@ orchard_plot(peat1,
 ```
 
 The grand mean of the effect size was -0.2296, but only had a p-value of 0.1946, indicating that there was no significant effect of WLD on herb production.
+
+# Species Richness
+
+We didn't get a lot of data on species richness, but let's take a look at it:
+
+```{r}
+sr <- subset(df, df$SR_or_FG=="SR")
+# Remove NA
+sr <- subset(sr, !is.na(sr$Control_mean))
+# factorize peatland type
+sr$Peatland_type <- factor(sr$Peatland_type)
+
+# Get effect size
+srES <- escalc(measure = "ROM", # Since we are looking at positive numbers similar in scale to each other
+                m2i = Control_mean, 
+                sd2i = Control_SD,
+                n2i = Control_n,
+                m1i = Treatment_mean,
+                sd1i = Treatment_SD,
+                n1i = Treatment_n,
+                data = sr)
+# grand mean
+sr1 <-rma.mv(
+  yi=yi,
+  V=vi, 
+  random= ~1|PaperID/ID,
+  method="REML",
+  digits=4,
+  data=srES)
+summary(sr1)
+# no significant difference
+orchard_plot(sr1,
+             group = "PaperID",
+             xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
+
+```
+
+```{r}
+# Try a one-variable with peatland type
+# Although we don't really have enough data for this
+sr2 <-rma.mv(
+  yi=yi,
+  V=vi, 
+  mods=~Peatland_type -1, 
+  random= ~1|PaperID/ID,
+  method="REML",
+  digits=4,
+  data=srES)
+summary(sr2)
+# No significant effects
+# bogs tended to decrease in SR with drawdown while other peatlands increased
+
+orchard_plot(sr2,
+             mod = "Peatland_type",
+             group = "PaperID",
+             xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
+```
+
+```{r}
+# Try continuous variable WTD difference
+# note that one study didn't report WTD
+# Try with WTD difference as another mod
+sr3 <-rma.mv(
+  yi=yi,
+  V=vi,
+  mods = ~ WTD_Difference,
+  random= ~1|PaperID/ID,
+  method="REML",
+  digits=4,
+  data=srES)
+summary(sr3)
+# no significant effect
+# smaller differences in WTD had different 
+
+sr3_plot <- mod_results(sr3, mod = "WTD_Difference", group = "PaperID")
+bubble_plot(sr3_plot, group = "PaperID",  mod = "WTD_Difference", xlab = "WTD_Difference")
+```
