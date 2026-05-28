@@ -85,7 +85,7 @@ orchard_plot(fg1,
              xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
 ```
 
-No significant changes to
+No significant difference in any functional group
 
 ```{r}
 
