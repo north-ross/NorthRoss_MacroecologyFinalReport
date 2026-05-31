@@ -1,6 +1,8 @@
 ---
 title: "NorthRoss_MetaAnalysis"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 Clean up data
@@ -8,7 +10,7 @@ Clean up data
 ```{r}
 library(metafor)
 library(orchaRd)
-df <- read.csv("ExtractedData_2026-05-15.csv")
+df <- read.csv("ExtractedData_2026-05-31.csv")
 # Convert all variances to SD
 table(df$Biodiversity_Variance_unit)
 df$Control_SD = df$Control_var
@@ -85,7 +87,28 @@ orchard_plot(fg1,
              xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
 ```
 
-No significant difference in any functional group
+Highly significant increase in trees, decrease in moss at p=0.1. Non-significant decrease in herbs (unexpected) and increase in shrubs (expected).
+
+Try using CaseID as a random effect and group in plot:
+
+```{r}
+# Try a one-variable with FG
+fg3 <-rma.mv(
+  yi=yi,
+  V=vi, 
+  mods=~FG_Group -1, 
+  random= ~1|PaperID/Case_ID/ID,
+  method="REML",
+  digits=4,
+  data=fgES)
+summary(fg3)
+# only significant change is in trees at p=0.01
+
+orchard_plot(fg3,
+             mod = "FG_Group",
+             group = "Case_ID",
+             xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
+```
 
 ```{r}
 
@@ -94,7 +117,7 @@ fg2 <-rma.mv(
   yi=yi,
   V=vi,
   mods = ~ FG_Group * WTD_Difference -1,
-  random= ~1|PaperID/ID,
+  random= ~1|PaperID/Case_ID/ID,
   method="REML",
   digits=4,
   data=fgES)
@@ -107,7 +130,9 @@ fg2_plot <- mod_results(fg2, mod = "WTD_Difference", group = "PaperID", by = "FG
 bubble_plot(fg2_plot, group = "PaperID",  mod = "WTD_Difference", xlab = "WTD_Difference")
 ```
 
-Herb production was significantly affected by WTD difference at the p=0.05 level - studies with small changes in WTD resulted in decreases in herb abundance,while high WTD showed increases.
+Herb production was significantly negatively affected by WTD difference at the p=0.01 level - studies with small changes in WTD resulted in slight decreases in herb abundance,while high WTD showed increases. This makes sense - studies that didn't really change WTD much didn't have a strong effect on shrubs, but large decreases in WTD had increased shrub production. (note that "WTD_Difference" above is actually FG_GroupHerb:WTD_Difference)
+
+Mosses also had a significant increase at the p=0.01 level, but it's a very small increase (0.0765 units/cm), doesn't really tell us much. Herbs were also significant
 
 # Looking at just herbs with peatland type as mod
 
@@ -164,6 +189,10 @@ We didn't get a lot of data on species richness, but let's take a look at it:
 sr <- subset(df, df$SR_or_FG=="SR")
 # Remove NA
 sr <- subset(sr, !is.na(sr$Control_mean))
+
+print(length(sr))
+# only 9 records...
+
 # factorize peatland type
 sr$Peatland_type <- factor(sr$Peatland_type)
 
@@ -232,3 +261,9 @@ summary(sr3)
 sr3_plot <- mod_results(sr3, mod = "WTD_Difference", group = "PaperID")
 bubble_plot(sr3_plot, group = "PaperID",  mod = "WTD_Difference", xlab = "WTD_Difference")
 ```
+
+# TO DO:
+
+-   Find outliers (<https://doing-meta.guide/heterogeneity.html?q=case#outliers>)
+
+-   
