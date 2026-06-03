@@ -10,6 +10,8 @@ Clean up data
 ```{r}
 library(metafor)
 library(orchaRd)
+library(tidyr)
+
 df <- read.csv("ExtractedData_2026-05-31.csv")
 # Convert all variances to SD
 table(df$Biodiversity_Variance_unit)
@@ -25,7 +27,13 @@ for(i in 1:nrow(df)){
   df[i,] <- dfi
 }
 
-# Note -some of the variances are too high and need to be corrected
+# remove record if NAs in any of these columns:
+fieldsList = c("Control_mean", "Control_n", "Control_var",
+               "Treatment_mean", "Treatment_n", "Treatment_var")
+for (i in 1:6){
+  df <- drop_na(df, fieldsList[i])
+}
+  
 
 # Combine peatland types
 df$Peatland_type <- replace(df$Peatland_type, 
@@ -84,7 +92,7 @@ summary(fg1)
 orchard_plot(fg1,
              mod = "FG_Group",
              group = "PaperID",
-             xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
+             xlab = "Effect size (standardised mean difference, control - treatment)")
 ```
 
 Highly significant increase in trees, decrease in moss at p=0.1. Non-significant decrease in herbs (unexpected) and increase in shrubs (expected).
@@ -110,6 +118,17 @@ orchard_plot(fg3,
              xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
 ```
 
+This makes things more significant, but it might be due to overfitting since we don't have very many data points for separate cases within each paper.
+
+The confidence intervals are on both sides of zero in all groups, meaning that the data is highly heterogeneous. This is also indicated by the Test for Residual Heterogeneity ($Q_E$ test) in the summary which has a significant result. Let's see if this is being affected by outliers:
+
+```{r}
+# add dmetar library to get find.outliers tools
+library(devtools)
+devtools::install_github("MathiasHarrer/dmetar")
+library(dmetar)
+```
+
 ```{r}
 
 # Try with WTD difference as another mod
@@ -117,7 +136,7 @@ fg2 <-rma.mv(
   yi=yi,
   V=vi,
   mods = ~ FG_Group * WTD_Difference -1,
-  random= ~1|PaperID/Case_ID/ID,
+  random= ~1|PaperID/ID,
   method="REML",
   digits=4,
   data=fgES)
@@ -128,6 +147,9 @@ summary(fg2)
 fg2_plot <- mod_results(fg2, mod = "WTD_Difference", group = "PaperID", by = "FG_Group")
 
 bubble_plot(fg2_plot, group = "PaperID",  mod = "WTD_Difference", xlab = "WTD_Difference")
+
+fg2_plot <- mod_results(fg2, mod = "WTD_Difference", group = "PaperID", by = "FG_Group")
+bubble_plot(fg2_plot, group = "PaperID",  mod = "Time_frame", xlab = "Time_frame")
 ```
 
 Herb production was significantly negatively affected by WTD difference at the p=0.01 level - studies with small changes in WTD resulted in slight decreases in herb abundance,while high WTD showed increases. This makes sense - studies that didn't really change WTD much didn't have a strong effect on shrubs, but large decreases in WTD had increased shrub production. (note that "WTD_Difference" above is actually FG_GroupHerb:WTD_Difference)
@@ -190,7 +212,7 @@ sr <- subset(df, df$SR_or_FG=="SR")
 # Remove NA
 sr <- subset(sr, !is.na(sr$Control_mean))
 
-print(length(sr))
+print(length(sr[,1]))
 # only 9 records...
 
 # factorize peatland type
@@ -220,6 +242,8 @@ orchard_plot(sr1,
              xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
 
 ```
+
+Not significant, but overall the grand mean is negative, meaning that the
 
 ```{r}
 # Try a one-variable with peatland type
