@@ -67,9 +67,7 @@ fg <- subset(fg, fg$FG_Group != "Vascular plant")
 
 fg$FG_Group <- factor(fg$FG_Group)
 # Get effect size
-fgES <- escalc(measure = "SMDH", # I think this is best, 
-                # since many of the studies use different units and 
-                # measurement techniques and different sample sizes
+fgES <- escalc(measure = "ROM", # I think this is best due to the variety of units used
                 m2i = Control_mean, 
                 sd2i = Control_SD,
                 n2i = Control_n,
@@ -89,10 +87,12 @@ fg1 <-rma.mv(
 summary(fg1)
 # only significant change is in trees at p=0.01
 
+I2 <- orchaRd::i2_ml(fg1, method="matrix")
+
 orchard_plot(fg1,
              mod = "FG_Group",
              group = "PaperID",
-             xlab = "Effect size (standardised mean difference, control - treatment)")
+             xlab = "Log response ratio (ROM)")
 ```
 
 Highly significant increase in trees, decrease in moss at p=0.1. Non-significant decrease in herbs (unexpected) and increase in shrubs (expected).
@@ -120,14 +120,7 @@ orchard_plot(fg3,
 
 This makes things more significant, but it might be due to overfitting since we don't have very many data points for separate cases within each paper.
 
-The confidence intervals are on both sides of zero in all groups, meaning that the data is highly heterogeneous. This is also indicated by the Test for Residual Heterogeneity ($Q_E$ test) in the summary which has a significant result. Let's see if this is being affected by outliers:
-
-```{r}
-# add dmetar library to get find.outliers tools
-library(devtools)
-devtools::install_github("MathiasHarrer/dmetar")
-library(dmetar)
-```
+The confidence intervals are on both sides of zero in all groups, meaning that the data is highly heterogeneous. This is also indicated by the Test for Residual Heterogeneity ($Q_E$ test) in the summary which has a significant result. Now would be a good time to check if our results are being skewed by outliers, but I don't have time to dig into this. From the orchard plot, it appears the results are fairly uniform.
 
 ```{r}
 
@@ -148,60 +141,11 @@ fg2_plot <- mod_results(fg2, mod = "WTD_Difference", group = "PaperID", by = "FG
 
 bubble_plot(fg2_plot, group = "PaperID",  mod = "WTD_Difference", xlab = "WTD_Difference")
 
-fg2_plot <- mod_results(fg2, mod = "WTD_Difference", group = "PaperID", by = "FG_Group")
-bubble_plot(fg2_plot, group = "PaperID",  mod = "Time_frame", xlab = "Time_frame")
 ```
 
 Herb production was significantly negatively affected by WTD difference at the p=0.01 level - studies with small changes in WTD resulted in slight decreases in herb abundance,while high WTD showed increases. This makes sense - studies that didn't really change WTD much didn't have a strong effect on shrubs, but large decreases in WTD had increased shrub production. (note that "WTD_Difference" above is actually FG_GroupHerb:WTD_Difference)
 
 Mosses also had a significant increase at the p=0.01 level, but it's a very small increase (0.0765 units/cm), doesn't really tell us much. Herbs were also significant
-
-# Looking at just herbs with peatland type as mod
-
-```{r}
-# Filter to just herbs
-# Later I will compare the effect on herbs, trees and mosses
-table(df$FG_Group)
-herbs <- subset(df,df$FG_Group=="Herb")
-
-# Get effect size
-datES <- escalc(measure = "SMDH", # I think this is best, 
-                    # since many of the studies use different units and 
-                    # measurement techniques and different sample sizes
-                m2i = Control_mean, 
-                sd2i = Control_SD,
-                n2i = Control_n,
-                m1i = Treatment_mean,
-                sd1i = Treatment_SD,
-                n1i = Treatment_n,
-                data = herbs)
-
-# Grand mean
-grandmean1 <-rma.mv(
-  yi=yi,
-  V=vi, 
-  random= ~1|PaperID/ID,
-  method="REML",
-  digits=4,
-  data=datES)
-summary(grandmean1)
-# Try a one-variable with Peatland type
-peat1 <-rma.mv(
-  yi=yi,
-  V=vi, 
-  mods=~Peatland_type, 
-  random= ~1|PaperID/ID,
-  method="REML",
-  digits=4,
-  data=datES)
-
-orchard_plot(peat1,
-             mod = "Peatland_type",
-             group = "PaperID",
-             xlab = "Standardised mean difference (with heteroscedastic population variances)")
-```
-
-The grand mean of the effect size was -0.2296, but only had a p-value of 0.1946, indicating that there was no significant effect of WLD on herb production.
 
 # Species Richness
 
@@ -212,14 +156,21 @@ sr <- subset(df, df$SR_or_FG=="SR")
 # Remove NA
 sr <- subset(sr, !is.na(sr$Control_mean))
 
+# Remove the Koster 2023 records with zero variance (shouldn't have been used)
+sr <- subset(sr, !PaperID == 12)
+# And the Andrew ones, I don't think these are appropriate
+sr <- subset(sr, !PaperID == 67)
+
 print(length(sr[,1]))
-# only 9 records...
+print(length(unique(sr$PaperID)))
+# only 5 records from 3 papers...
 
 # factorize peatland type
 sr$Peatland_type <- factor(sr$Peatland_type)
 
 # Get effect size
-srES <- escalc(measure = "ROM", # Since we are looking at positive numbers similar in scale to each other
+srES <- escalc(measure = "SMDH", # Since this time they have consistent units
+               # standardized mean difference with heteroscedastic population variances
                 m2i = Control_mean, 
                 sd2i = Control_SD,
                 n2i = Control_n,
@@ -236,10 +187,11 @@ sr1 <-rma.mv(
   digits=4,
   data=srES)
 summary(sr1)
-# no significant difference
+# mean slight increase in species richness
+# but no significant difference
 orchard_plot(sr1,
              group = "PaperID",
-             xlab = "Standardised mean difference (Control - Treatmet) with heteroscedastic population variances")
+             xlab = "Species richness standardised mean difference")
 
 ```
 
